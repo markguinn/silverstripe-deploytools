@@ -1,6 +1,6 @@
 {
 	"name": "markguinn/silverstripe-deploytools",
-	"description": "Provides automated git deployment and assets/database backup.",
+	"description": "Provides automated git deployment and (soon) assets/database backup.",
 	"type": "silverstripe-module",
 	"keywords": ["silverstripe", "deploy", "backup", "git"],
 	"license": "MIT",

@@ -3,4 +3,5 @@ Name: deployroutes
 ---
 Director:
   rules:
-    'deploy': 'DeployController'
+    'deploytools': 'DeployController'
+    'deploy-tools': 'DeployController'
