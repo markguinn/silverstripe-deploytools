@@ -1,0 +1,6 @@
+---
+Name: deployroutes
+---
+Director:
+  rules:
+    'deploy': 'DeployController'
