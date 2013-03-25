@@ -19,7 +19,7 @@ INSTALLATION:
 -------------
 1. Install via composer (composer require markguinn/silverstripe-deploytools) or
    download and install manually.
-2. Open /deploy-tools/install in a browser and fill out the form.
+2. Open /deploy-tools/install in a browser and fill out the form (note, you need to be logged in as an admin).
 3. Add "[deploy]" deploy to your commit message for automatic deployment when you push to master.
 
 TODO:
