@@ -128,16 +128,25 @@ class DeployController extends Controller
 	 * @return string
 	 */
 	public function commit_hook() {
+		
+		$logPath = BASE_PATH . '/' . self::$log_path . '/deploy.log';
+		
 		if (isset($_POST['payload'])) {
 			// github and bitbucket use a 'payload' parameter
 			$json = $_POST['payload'];
 		} else {
 			$json = file_get_contents('php://input');
 		}
-		if (!$json) return 'ignored';
+		if (!$json) {
+			$this->log('ignored #1', 'INFO', $logPath);
+			return 'ignored';
+		}
 
 		$data = ($json) ? json_decode($json, true) : null;
-		if (!$data || !is_array($data['commits'])) return 'ignored';
+		if (!$data || !is_array($data['commits'])) {
+			$this->log('ignored #2', 'INFO', $logPath);
+			return 'ignored';
+		}
 
 		// look through the commits
 		$found = false;
@@ -154,12 +163,15 @@ class DeployController extends Controller
 		}
 
 		if (!$found) return 'ignored';
-		if (defined('DEPLOY_TAG') && !in_array(DEPLOY_TAG, $tags)) return 'ignored';
+		if (defined('DEPLOY_TAG') && !in_array(DEPLOY_TAG, $tags)) {
+			$this->log('ignored #3', 'INFO', $logPath);
+			return 'ignored';			
+		}
 
 		// create the deployment
 		increase_time_limit_to(600);
 		$deploy = new Deploy(BASE_PATH, array(
-			'log'   => BASE_PATH . '/' . self::$log_path . '/deploy.log'
+			'log'   => $logPath
 		));
 
 		$deploy->post_deploy = function() use ($deploy) {
@@ -253,4 +265,28 @@ class DeployController extends Controller
 	public static function default_hook_url() {
 		return Director::absoluteURL(DEPLOY_TOOLS_URL . '/commit-hook');
 	}
+	
+	/**
+	 * Basic logging
+	 * NOTE: This duplicated logging functionality in {@see Deploy}
+	 * It would make sense to move all loggin to a helper class
+	 */
+	public function log($message, $type = 'INFO', $logPath) {
+		// Set the name of the log file
+		$filename = $logPath;
+
+		if (!file_exists($filename)) {
+			// Create the log file
+			file_put_contents($filename, '');
+
+			// Allow anyone to write to log files
+			chmod($filename, 0664);
+		}
+
+		// Write the message into the log file
+		// Format: time --- type: message
+		file_put_contents($filename, date($this->_date_format) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
+	}
+	
+	
 }
