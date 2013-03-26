@@ -111,7 +111,8 @@ class DeployController extends Controller
 		return $this->customise(array(
 			'Title'     => 'Deploy Tools Install',
 			'Content'   => '<p>The following actions were completed:</p><ul><li>'
-							. implode('</li><li>', $actions) . '</li></ul>',
+							. implode('</li><li>', $actions) . '</li></ul>'
+							. '<br /><br /><a href="/">go back to site</a>',
 		))->renderWith(array('Page','Page'));
 	}
 
