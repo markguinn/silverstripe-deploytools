@@ -44,7 +44,11 @@ class DeployController extends Controller
 			if (preg_match('#^origin\s+.*bitbucket\.org.(.+?)/(.+?)\.git#', $line, $matches)) {
 				$fields[] = HiddenField::create('RepoUser', '', $matches[1]);
 				$fields[] = HiddenField::create('RepoSlug', '', $matches[2]);
-				$fields[] = LiteralField::create('repo', "<p>You appear to be deploying from Bitbucket ({$matches[1]}/{$matches[2]}.git). If you enter your username and password below we will set up a service hook to deploy automatically. Your credentials will not be logged or saved.</p>");
+				$fields[] = LiteralField::create('repo', "<p>"
+					. "You appear to be deploying from Bitbucket ({$matches[1]}/{$matches[2]}.git). "
+					. "If you enter your username and password below we will set up a service hook to deploy automatically. "
+					. "Your credentials will not be logged or saved."
+					. "</p>");
 				$fields[] = TextField::create('PostURL', 'Commit Hook URL (must be unique to this server)', self::default_hook_url());
 				$fields[] = TextField::create('ApiUser', 'Bitbucket Username');
 				$fields[] = PasswordField::create('ApiPassword', 'Bitbucket Password');
@@ -75,7 +79,8 @@ class DeployController extends Controller
 		if (isset($data['ApiUser']) && !empty($data['ApiUser']) && !empty($data['ApiPassword'])) {
 			$postURL = Director::absoluteURL(empty($data['PostURL']) ? self::default_hook_url() : $data['PostURL']);
 
-			$json = file_get_contents('https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) . '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
+			$json = file_get_contents('https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) 
+				. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
 			$services = $json ? json_decode($json, true) : array();
 
 			// if services already exist, make sure there's not already one for this site
@@ -91,7 +96,8 @@ class DeployController extends Controller
 			// assuming we need to, post the request
 			if ($postURL) {
 				$ch = curl_init();
-				curl_setopt($ch, CURLOPT_URL, 'https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) . '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
+				curl_setopt($ch, CURLOPT_URL, 'https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) 
+					. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
 				curl_setopt($ch, CURLOPT_POST, 1);
 				curl_setopt($ch, CURLOPT_POSTFIELDS, 'type=POST&URL=' . urlencode($postURL));
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
