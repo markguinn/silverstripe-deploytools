@@ -138,13 +138,13 @@ class DeployController extends Controller
 			$json = file_get_contents('php://input');
 		}
 		if (!$json) {
-			$this->log('ignored #1', 'INFO', $logPath);
+			$this->log('ignored #1', 'DEBUG', $logPath);
 			return 'ignored';
 		}
 
 		$data = ($json) ? json_decode($json, true) : null;
 		if (!$data || !is_array($data['commits'])) {
-			$this->log('ignored #2', 'INFO', $logPath);
+			$this->log('ignored #2', 'DEBUG', $logPath);
 			return 'ignored';
 		}
 
@@ -164,7 +164,7 @@ class DeployController extends Controller
 
 		if (!$found) return 'ignored';
 		if (defined('DEPLOY_TAG') && !in_array(DEPLOY_TAG, $tags)) {
-			$this->log('ignored #3', 'INFO', $logPath);
+			$this->log('ignored #3', 'DEBUG', $logPath);
 			return 'ignored';			
 		}
 
