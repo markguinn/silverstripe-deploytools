@@ -41,16 +41,13 @@
  * 
  * - as this script is triggered by cron, make sure the hourly backups are really run every hour (now some backups are only every other hour)
  * 
- * @author Anselm Christophersen <ac@title.dk>
+ * @author Anselm Christophersen <ac@anselm.dk>
  * 
  */
 class RotatingBackupTask extends HourlyTask {
 
 	protected $title = "RotatingBackupTask";
-	protected $description = "
-		Hourly dump of the Database to a directory not accessible from the web root <br>
-		(CAN ONLY BE RUN FROM THE COMMAND LINE)
-	";
+	protected $description = "Hourly dump of the Database to a directory not accessible from the web root";
 	protected $backupKeep = '48,7,4,12,-1';
 	protected $backupKeepArr = array();
 	protected $backupKeepAssets = '10,7,4,3,-1';
@@ -332,7 +329,7 @@ class RotatingBackupTask extends HourlyTask {
 		//$cmd = 'tar -zcvf ' . $file . ' ' . ASSETS_PATH;
 		//$this->runShell($cmd);
 		//
-		//more advanced version, cding to basefolder first to create a tar without all the sub folders
+		//more advanced version, cding to base dir first to create a tar without all the sub dirs
 		$cmd = "cd '{$baseFolder}'; nice -n 19 tar -zcf {$file} " . ASSETS_DIR . ";";
 		exec($cmd);
 		
