@@ -40,16 +40,17 @@
  * Possible improvements to this script:
  * 
  * - as this script is triggered by cron, make sure the hourly backups are really run every hour (now some backups are only every other hour)
- * - fix the problem with yearly backups
- * - clean up/document code and make it more readable
  * 
- * @author Anselm Christophersen <ac@anselm.dk>
+ * @author Anselm Christophersen <ac@title.dk>
  * 
  */
 class RotatingBackupTask extends HourlyTask {
 
 	protected $title = "RotatingBackupTask";
-	protected $description = "Hourly dump of the Database to a directory not accessible from the web root";
+	protected $description = "
+		Hourly dump of the Database to a directory not accessible from the web root <br>
+		(CAN ONLY BE RUN FROM THE COMMAND LINE)
+	";
 	protected $backupKeep = '48,7,4,12,-1';
 	protected $backupKeepArr = array();
 	protected $backupKeepAssets = '10,7,4,3,-1';
@@ -61,10 +62,10 @@ class RotatingBackupTask extends HourlyTask {
 	 * Process
 	 */
 	function process() {
-//		if (!Director::is_cli()) {
-//			echo "This script can only be run from the command line";
-//			return false;
-//		}
+		if (!Director::is_cli()) {
+			echo "This script can only be run from the command line";
+			return false;
+		}
 
 		//Initialization
 		$this->varInit();
@@ -77,8 +78,51 @@ class RotatingBackupTask extends HourlyTask {
 		$this->runRotatingBackup('db');
 		//Assets
 		$this->runRotatingBackup('assets');
+		
+		//Cleanup
+		$this->cleanup('db');
+		$this->cleanup('assets');
 	}
 
+	/**
+	 * Cleanup
+	 * Cleaning up after the backup
+	 * While this should have been taken care of in "runRotatingBackup",
+	 * this method makes sure that no stubs are left due to code changes
+	 */
+	protected function cleanup($type){
+
+		//DB Mode
+		$keepArr = $this->backupKeepArr;
+		
+		//Assets mode
+		if ($type == 'assets') {
+			$keepArr = $this->backupKeepAssetsArr;
+		}
+		
+		$backupDir = $this->backupDir;		
+
+		foreach ($keepArr as $name => $keep) {
+			$dir = "{$backupDir}/$name";
+			$files = $this->runShell("ls -t $dir", true);
+			
+			foreach ($files as $file) {
+				$f = "$dir/$file";
+				if (is_dir($f)) {
+					//echo "dir: $f \n";
+				} else {
+					//echo "$f \n";
+					//As per 26th March 2013 all backups should be either in a "db" or "assets" dir
+					//here we delete everything that's directly in a dir
+					$this->runShell("rm $f");
+				}
+			}
+		}
+		
+		
+	}
+	
+	
 	/**
 	 * Initializing variables
 	 */
@@ -130,7 +174,8 @@ class RotatingBackupTask extends HourlyTask {
 	 * https://github.com/runekaagaard/php-simple-backup/blob/master/php-simple-backup.php
 	 */	
 	protected function runRotatingBackup($type = 'db') {
-
+		$this->ok("\nRotating $type backup:");
+		
 		global $databaseConfig;
 		
 		//DB Mode
@@ -155,41 +200,93 @@ class RotatingBackupTask extends HourlyTask {
 		);
 		$time = time();		
 
-
+		$backupSizeLog = "";
+		
 		//Running DB Dump
 		$old_file = false;
 		foreach ($keepArr as $name => $keep) {
-			$dir = "{$backupDir}/$name";
+			$dir = "{$backupDir}/$name/$type";
 			$minutes = $seconds[$name];
-			$files = $this->runShell("ls -t $dir | grep '.{$backupName}'", true);
+			
+			//this only finds the exact backup name
+			//$files = $this->runShell("ls -t $dir | grep '.{$backupName}'", true);
+			//has been replaced with this that finds all files in the directory,
+			//which is much more useful for occasions when the backup name has changed
+			$files = $this->runShell("ls -t $dir", true);
+			
+			//var_dump($files);
+			
+			
+			//calculating if a backup is due
+			$backupDue = false;
+			if (!empty($files)) {
+				$filetime = filemtime("$dir/$files[0]");
+				$dueSeconds = $seconds[$name];
+				//$this->debugmsg("Testing if backup is due, time: $time, file time: $filetime, time minus file time: " . ($time - $filetime) . ", due seconds: $dueSeconds");
+				
+				$backupDue = $time - filemtime("$dir/$files[0]") >= $seconds[$name];
+				if ($backupDue) {
+					$this->ok(ucfirst($name) . " backup due - last backup is " . ($time - $filetime) . " seconds old");
+				} else {
+					$this->ok(ucfirst($name) . " backup not due - last backup is " . ($time - $filetime) . " seconds old - due at $dueSeconds seconds");
+				}
+			}
+			
+			$force = false;
+			//only set this to true for debugging
+			//$force = true;
+			
+			if ($force 
+				//|| $keep === -1 //keep infinite amounts - not needed here
+				|| empty($files) //no files present yet
+				|| $backupDue //the backup is due
+				){
+				
+				$fileNameShort = date('Y-m-d_H-iT') . "_{$backupName}";
+				$file = "$dir/" . $fileNameShort;
+				//$this->debugmsg($file);
 
-			if ($name != 'yearly') { //currently there seems to be a bug with yearly - makig backups on each run
-				if ($keep === -1
-					|| empty($files)
-					|| $time - filemtime("$dir/$files[0]") >= $seconds[$name]) {
-					$file = "$dir/" . date('Y-m-d_H-iT') . "_{$backupName}";
-
-					if (empty($old_file)) {
-						if ($type == 'db') {
-							$this->mysqlDump($file);
-						} elseif ($type == 'assets') {
-							$this->assetsDump($file);
-						}
-
-						$old_file = $file;
-					} else {
-						$this->runShell("cp $old_file $file");
-						$file = $old_file;
+				if (empty($old_file)) {
+					//No old file - creating the actual dump
+					if ($type == 'db') {
+						$this->mysqlDump($file);
+					} elseif ($type == 'assets') {
+						$this->assetsDump($file);
 					}
-					$this->ok("Created $name $type backup $file");
-					if ($keep !== -1 && count($files) > $keep) {
-						$this->runShell("rm $dir/" . array_pop($files));
+
+					$old_file = $file;
+					$old_fileNameShort = "$name/$type/$fileNameShort";
+				} else {
+					//Additional files are copied over - see log
+					$this->runShell("cp $old_file $file");
+					$this->ok("Copied $old_fileNameShort to $name/$type/$fileNameShort");
+					$file = $old_file;
+				}
+				
+				//Deleting unwanted backups according to the config
+				if ($keep !== -1 && count($files) > $keep) {
+					$reversed_files = array_reverse($files);
+					$i = 0;
+					foreach ($files as $file) {
+						//$this->debugmsg("$file	$i");
+						if ($i >= $keep) {
+							$this->runShell("rm $dir/" . $file);
+							$this->ok("Deleted obsolete file $name/$type/$fileNameShort");
+						}
+						$i++;
 					}
 				}
 			}
-		}		
+			$keptBackups = $this->runShell("ls -t $dir", true);
+			$dirSizeArr1 = $this->runShell("du -sh $dir", true);
+			$dirSizeArr2 = explode('	',$dirSizeArr1[0]);
+			$dirSize = $dirSizeArr2[0];
+			
+			$backupSizeLog .= "$name: $dirSize, ";
+			$this->ok("Keeping " . count($keptBackups) . " out of max $keep $name backups totalling $dirSize");
+		}
 		
-		
+		$this->ok("Total $type backup size: " . rtrim($backupSizeLog, ", "));
 		
 	}
 	
@@ -219,6 +316,7 @@ class RotatingBackupTask extends HourlyTask {
 
 		//echo $cmd;
 		$this->runShell($cmd);
+		$this->ok("Created db dump $file");
 		
 	}
 
@@ -234,9 +332,12 @@ class RotatingBackupTask extends HourlyTask {
 		//$cmd = 'tar -zcvf ' . $file . ' ' . ASSETS_PATH;
 		//$this->runShell($cmd);
 		//
-		//more advanced version, cding to base dir first to create a tar without all the sub dirs
+		//more advanced version, cding to basefolder first to create a tar without all the sub folders
 		$cmd = "cd '{$baseFolder}'; nice -n 19 tar -zcf {$file} " . ASSETS_DIR . ";";
 		exec($cmd);
+		
+		$this->ok("Created assets dump $file");
+		
 		
 		//$this->ok($cmd);
 		
@@ -273,8 +374,9 @@ class RotatingBackupTask extends HourlyTask {
 	 * Creating rotate dirs
 	 */
 	protected function create_dirs() {
-		if (!is_writable($this->backupDir))
+		if (!is_writable($this->backupDir)) {
 			$this->error("backup-dir " . $this->backupDir . " is not writeable.");
+		}
 		foreach ($this->backupKeepArr as $k => $v) {
 			if ($v === 0)
 				continue;
@@ -282,6 +384,11 @@ class RotatingBackupTask extends HourlyTask {
 			$exists = is_dir($dir);
 			if (!$exists && !mkdir($dir))
 				$this->error("backup-dir: $dir is not writeable.");
+			if (!$exists && !mkdir($dir. '/assets'))
+				$this->error("backup-dir: $dir/assets is not writeable.");
+			if (!$exists && !mkdir($dir. '/db'))
+				$this->error("backup-dir: $dir/db is not writeable.");
+			
 			if (!$exists)
 				$this->ok("Created directory: $dir");
 		}
@@ -301,6 +408,15 @@ class RotatingBackupTask extends HourlyTask {
 
 	protected function ok($message) {
 		echo "\033[32m$message\033[0m\n";
+	}
+	
+	/**
+	 * Debugs are printed in yellow
+	 * See this for reference:
+	 * http://www.bashguru.com/2010/01/shell-colors-colorizing-shell-scripts.html
+	 */
+	protected function debugmsg($message) {
+		echo "\033[33m$message\033[0m\n";
 	}
 
 }
