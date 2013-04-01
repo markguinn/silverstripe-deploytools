@@ -182,10 +182,8 @@ class DeployController extends Controller
 				if (file_exists('/usr/local/bin/composer')) {
 					exec('composer install', $output);
 					$deploy->log('Executing composer install...' . implode("\n", $output));
+				//Checking for composer.phar
 				} elseif (file_exists('/usr/local/bin/composer.phar')) {
-					//Anselm: I had trouble installing composer on centos 5.x so I just placed it there for now
-					//this could probably be fixed, and then we can delete these lines - for now this just
-					//allows me to test the system
 					exec('/usr/local/bin/composer.phar install', $output);
 					$deploy->log('Executing composer install...' . implode("\n", $output));
 				} else {
