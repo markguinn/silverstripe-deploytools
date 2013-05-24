@@ -64,6 +64,8 @@ class RotatingBackupTask extends HourlyTask {
 			return false;
 		}
 
+		$this->ok("Running Rotating Backup Task at " . date('Y-m-d H:i T'));
+		
 		//Initialization
 		$this->varInit();
 
