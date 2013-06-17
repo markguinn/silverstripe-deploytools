@@ -219,19 +219,19 @@ class DeployController extends Controller
 	 * Clears all the cache
 	 * @static
 	 */
-	public static function clear_cache() {
-		$dirs = array('.', 'cache', 'aggregate_cache');
-
-		foreach ($dirs as $dirname) {
-			$dirpath = TEMP_FOLDER . '/' . $dirname;
-			if ($dir = opendir($dirpath)) {
-				while (false !== ($file = readdir($dir))) {
-					if ($file != '.' && $file != '..' && $file != '.svn' && !is_dir($file)) {
-						unlink($dirpath . '/' . $file);
+	public static function clear_cache($dirname = '.') {
+		$dirpath = TEMP_FOLDER . DIRECTORY_SEPARATOR . $dirname;
+		if ($dir = opendir($dirpath)) {
+			while (false !== ($file = readdir($dir))) {
+				if ($file != '.' && $file != '..' && $file != '.svn' && $file != '.git') {
+					if (is_dir($dirpath . DIRECTORY_SEPARATOR . $file)) {
+						self::clear_cache($dirname . DIRECTORY_SEPARATOR . $file);
+					} else {
+						unlink($dirpath . DIRECTORY_SEPARATOR . $file);
 					}
 				}
-				closedir($dir);
 			}
+			closedir($dir);
 		}
 	}
 
