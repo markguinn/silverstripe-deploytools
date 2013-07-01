@@ -21,7 +21,7 @@ class DeployController extends Controller
 	 * @return string
 	 */
 	public function install() {
-		if (!Permission::check('ADMIN')) return $this->httpError(403);
+		if (!Permission::check('ADMIN')) return Security::permissionFailure($this);
 
 		return $this->customise(array(
 			'Title'     => 'Install Deploy Tools',
