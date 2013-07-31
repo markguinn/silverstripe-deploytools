@@ -41,17 +41,8 @@ class DeployController extends Controller
 		chdir(BASE_PATH);
 		exec(self::git() . ' remote -v', $out);
 		foreach ($out as $line) {
-			if (preg_match('#^origin\s+.*bitbucket\.org.(.+?)/(.+?)\.git#', $line, $matches)) {
-				$fields[] = HiddenField::create('RepoUser', '', $matches[1]);
-				$fields[] = HiddenField::create('RepoSlug', '', $matches[2]);
-				$fields[] = LiteralField::create('repo', "<p>"
-					. "You appear to be deploying from Bitbucket ({$matches[1]}/{$matches[2]}.git). "
-					. "If you enter your username and password below we will set up a service hook to deploy automatically. "
-					. "Your credentials will not be logged or saved."
-					. "</p>");
-				$fields[] = TextField::create('PostURL', 'Commit Hook URL (must be unique to this server)', self::default_hook_url());
-				$fields[] = TextField::create('ApiUser', 'Bitbucket Username');
-				$fields[] = PasswordField::create('ApiPassword', 'Bitbucket Password');
+			if ($host = DeployHostAPI::instance_if_matched($line)) {
+				$fields = $host->addInstallFormFields($fields);
 				break;
 			}
 		}
@@ -76,42 +67,11 @@ class DeployController extends Controller
 		if (!Permission::check('ADMIN')) return $this->httpError(403);
 		$actions = array();
 
-		if (isset($data['ApiUser']) && !empty($data['ApiUser']) && !empty($data['ApiPassword'])) {
-			$postURL = Director::absoluteURL(empty($data['PostURL']) ? self::default_hook_url() : $data['PostURL']);
-
-			$json = file_get_contents('https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) 
-				. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
-			$services = $json ? json_decode($json, true) : array();
-
-			// if services already exist, make sure there's not already one for this site
-			if ($services && count($services) > 0) {
-				foreach ($services as $service) {
-					if ($service['service']['type'] == 'POST'
-							&& $service['service']['fields'][0]['value'] == $postURL) {
-						$postURL = false; // indicate that we don't need a new one
-					}
-				}
-			}
-
-			// assuming we need to, post the request
-			if ($postURL) {
-				$ch = curl_init();
-				curl_setopt($ch, CURLOPT_URL, 'https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword']) 
-					. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
-				curl_setopt($ch, CURLOPT_POST, 1);
-				curl_setopt($ch, CURLOPT_POSTFIELDS, 'type=POST&URL=' . urlencode($postURL));
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-				$server_output = curl_exec ($ch);
-				$http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-				curl_close ($ch);
-				if ($http_status == 200 || $http_status == 201) {
-					$actions[] = 'Bitbucket POST service for deployment was created.';
-				} else {
-					$actions[] = 'Bitbucket POST service failed. Response code=' . $http_status;
-				}
-			} else {
-				$actions[] = 'Bitbucket POST service was not created because it already exists.';
-			}
+		// install hooks if needed
+		if (isset($data['RepoType']) && !empty($data['RepoType'])) {
+			$data['PostURL'] = Director::absoluteURL(empty($data['PostURL']) ? self::default_hook_url() : $data['PostURL']);
+			$host = DeployHostAPI::factory($data['RepoType'], $data['RepoID']);
+			$actions = array_merge($actions, $host->processInstall($data));
 		}
 
 		return $this->customise(array(
