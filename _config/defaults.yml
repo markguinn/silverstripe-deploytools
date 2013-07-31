@@ -1,0 +1,8 @@
+---
+Name: deploydefaults
+---
+DTLog:
+  log_path: '../logs'
+  log_file: 'deploytools.log'
+  log_level: INFO
+  date_format: 'Y-m-d H:i:s'

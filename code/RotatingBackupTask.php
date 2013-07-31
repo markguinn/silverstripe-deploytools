@@ -402,10 +402,12 @@ class RotatingBackupTask extends HourlyTask {
 
 	protected function error($message, $status = 1) {
 		echo "\033[31m$message\033[0m\n";
+		DTLog::info('ERROR: '.$message);
 		exit($status);
 	}
 
 	protected function ok($message) {
+		DTLog::info($message);
 		echo "\033[32m$message\033[0m\n";
 	}
 	
@@ -415,6 +417,7 @@ class RotatingBackupTask extends HourlyTask {
 	 * http://www.bashguru.com/2010/01/shell-colors-colorizing-shell-scripts.html
 	 */
 	protected function debugmsg($message) {
+		DTLog::debug($message);
 		echo "\033[33m$message\033[0m\n";
 	}
 

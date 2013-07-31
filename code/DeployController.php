@@ -7,7 +7,6 @@
 class DeployController extends Controller
 {
 	static $allowed_actions = array('index', 'commit_hook', 'install', 'InstallForm');
-	static $log_path = '../logs'; // BASE_PATH is assumed
 
 	/**
 	 * Rejection
@@ -98,13 +97,13 @@ class DeployController extends Controller
 			$json = file_get_contents('php://input');
 		}
 		if (!$json) {
-			$this->log('ignored #1', 'DEBUG', $logPath);
+			DTLog::debug('ignored #1');
 			return 'ignored';
 		}
 
 		$data = ($json) ? json_decode($json, true) : null;
 		if (!$data || !is_array($data['commits'])) {
-			$this->log('ignored #2', 'DEBUG', $logPath);
+			DTLog::debug('ignored #2');
 			return 'ignored';
 		}
 
@@ -124,15 +123,13 @@ class DeployController extends Controller
 
 		if (!$found) return 'ignored';
 		if (defined('DEPLOY_TAG') && !in_array(DEPLOY_TAG, $tags)) {
-			$this->log('ignored #3', 'DEBUG', $logPath);
+			DTLog::debug('ignored #3');
 			return 'ignored';			
 		}
 
 		// create the deployment
 		increase_time_limit_to(600);
-		$deploy = new Deploy(BASE_PATH, array(
-			'log'   => $logPath
-		));
+		$deploy = new Deploy(BASE_PATH, array());
 
 		$deploy->post_deploy = function() use ($deploy) {
 			global $_FILE_TO_URL_MAPPING;
@@ -140,33 +137,34 @@ class DeployController extends Controller
 			// composer install if detected
 			if (file_exists(BASE_PATH . DIRECTORY_SEPARATOR . 'composer.json')) {
 				if (file_exists('/usr/local/bin/composer')) {
+					// TODO: more flexible composer detection
 					exec('composer install', $output);
-					$deploy->log('Executing composer install...' . implode("\n", $output));
-				//Checking for composer.phar
+					DTLog::info('Executing composer install...' . implode("\n", $output));
+					//Checking for composer.phar
 				} elseif (file_exists('/usr/local/bin/composer.phar')) {
 					exec('/usr/local/bin/composer.phar install', $output);
-					$deploy->log('Executing composer install...' . implode("\n", $output));
+					DTLog::info('Executing composer install...' . implode("\n", $output));
 				} else {
-					$deploy->log('composer.json detected but unable to locate composer.');
+					DTLog::info('composer.json detected but unable to locate composer.');
 				}
 			}
 
 			// clear cache
-			$deploy->log('Clearing cache...');
+			DTLog::info('Clearing cache...');
 			DeployController::clear_cache();
 
 			// update database
 			if (isset($_FILE_TO_URL_MAPPING[BASE_PATH])) {
 				exec('php framework/cli-script.php dev/build', $output2);
-				$deploy->log('Updating database...' . implode("\n", $output2));
+				DTLog::info('Updating database...' . implode("\n", $output2));
 			} else {
-				$deploy->log('Database not updated. $_FILE_TO_URL_MAPPING must be set for '.BASE_PATH);
+				DTLog::info('Database not updated. $_FILE_TO_URL_MAPPING must be set for '.BASE_PATH);
 			}
 
 //    		SS_ClassLoader::instance()->getManifest()->regenerate();
 //            ob_start();
 //            DatabaseAdmin::create()->doBuild(false, true, false);
-//            $deploy->log('dev/build complete: '.ob_get_contents());
+//            DTLog::info('dev/build complete: '.ob_get_contents());
 //            ob_end_clean();
 		};
 
@@ -223,28 +221,5 @@ class DeployController extends Controller
 	public static function default_hook_url() {
 		return Director::absoluteURL(DEPLOY_TOOLS_URL . '/commit-hook');
 	}
-	
-	/**
-	 * Basic logging
-	 * NOTE: This duplicated logging functionality in {@see Deploy}
-	 * It would make sense to move all loggin to a helper class
-	 */
-	public function log($message, $type = 'INFO', $logPath) {
-		// Set the name of the log file
-		$filename = $logPath;
-
-		if (!file_exists($filename)) {
-			// Create the log file
-			file_put_contents($filename, '');
-
-			// Allow anyone to write to log files
-			chmod($filename, 0664);
-		}
-
-		// Write the message into the log file
-		// Format: time --- type: message
-		file_put_contents($filename, date($this->_date_format) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
-	}
-	
 	
 }

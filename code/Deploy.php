@@ -14,22 +14,6 @@ class Deploy
 	public $post_deploy;
 
 	/**
-	 * The name of the file that will be used for logging deployments. Set to
-	 * FALSE to disable logging.
-	 *
-	 * @var string
-	 */
-	private $_log = 'deployments.log';
-
-	/**
-	 * The timestamp format used for logging.
-	 *
-	 * @link    http://www.php.net/manual/en/function.date.php
-	 * @var     string
-	 */
-	private $_date_format = 'Y-m-d H:i:s';
-
-	/**
 	 * The name of the branch to pull from.
 	 *
 	 * @var string
@@ -61,7 +45,7 @@ class Deploy
 		// Determine the directory path
 		$this->_directory = realpath($directory) . DIRECTORY_SEPARATOR;
 
-		$available_options = array('log', 'date_format', 'branch', 'remote');
+		$available_options = array('branch', 'remote');
 
 		foreach ($options as $option => $value) {
 			if (in_array($option, $available_options)) {
@@ -69,32 +53,7 @@ class Deploy
 			}
 		}
 
-		$this->log('Attempting deployment...');
-	}
-
-	/**
-	 * Writes a message to the log file.
-	 *
-	 * @param  string $message  The message to write
-	 * @param  string $type     The type of log message (e.g. INFO, DEBUG, ERROR, etc.)
-	 */
-	public function log($message, $type = 'INFO') {
-		if ($this->_log) {
-			// Set the name of the log file
-			$filename = $this->_log;
-
-			if (!file_exists($filename)) {
-				// Create the log file
-				file_put_contents($filename, '');
-
-				// Allow anyone to write to log files
-				chmod($filename, 0664);
-			}
-
-			// Write the message into the log file
-			// Format: time --- type: message
-			file_put_contents($filename, date($this->_date_format) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
-		}
+		DTLog::info('Attempting deployment...');
 	}
 
 	/**
@@ -105,27 +64,27 @@ class Deploy
 			// Make sure we're in the right directory
 			//exec('cd '.$this->_directory, $output);
 			chdir($this->_directory);
-			$this->log("Changing working directory to {$this->_directory}...");
+			DTLog::info("Changing working directory to {$this->_directory}...");
 
 			// Discard any changes to tracked files since our last deploy
 			exec('git reset --hard HEAD', $output);
-			$this->log('Reseting repository... ' . implode("\n", $output));
+			DTLog::info('Reseting repository... ' . implode("\n", $output));
 
 			// Update the local repository
 			exec('git pull ' . $this->_remote . ' ' . $this->_branch, $output2);
-			$this->log('Pulling in changes... ' . implode("\n", $output2));
+			DTLog::info('Pulling in changes... ' . implode("\n", $output2));
 
 			// Secure the .git directory
 			//exec('chmod -R o-rx .git');
-			//$this->log('Securing .git directory... ');
+			//DTLog::info('Securing .git directory... ');
 
 			if (is_callable($this->post_deploy)) {
 				call_user_func($this->post_deploy, $this->_data);
 			}
 
-			$this->log('Deployment successful.');
+			DTLog::info('Deployment successful.');
 		} catch (Exception $e) {
-			$this->log($e, 'ERROR');
+			DTLog::info($e, 'ERROR');
 		}
 	}
 
