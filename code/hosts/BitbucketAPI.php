@@ -38,7 +38,7 @@ class BitbucketAPI extends DeployHostAPI
 		if (isset($data['ApiUser']) && !empty($data['ApiUser']) && !empty($data['ApiPassword'])) {
 			$postURL = $data['PostURL'];
 			$json = file_get_contents('https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword'])
-				. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
+				. '@api.bitbucket.org/1.0/repositories/' . $data['RepoID'] . '/services');
 			$services = $json ? json_decode($json, true) : array();
 
 			// if services already exist, make sure there's not already one for this site
@@ -55,7 +55,7 @@ class BitbucketAPI extends DeployHostAPI
 			if ($postURL) {
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, 'https://' . urlencode($data['ApiUser']) . ':' . urlencode($data['ApiPassword'])
-					. '@api.bitbucket.org/1.0/repositories/' . $data['RepoUser'] . '/' . $data['RepoSlug'] . '/services');
+					. '@api.bitbucket.org/1.0/repositories/' . $data['RepoID'] . '/services');
 				curl_setopt($ch, CURLOPT_POST, 1);
 				curl_setopt($ch, CURLOPT_POSTFIELDS, 'type=POST&URL=' . urlencode($postURL));
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
