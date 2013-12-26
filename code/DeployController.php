@@ -87,9 +87,6 @@ class DeployController extends Controller
 	 * @return string
 	 */
 	public function commit_hook() {
-		
-		$logPath = BASE_PATH . '/' . self::$log_path . '/deploy.log';
-		
 		if (isset($_POST['payload'])) {
 			// github and bitbucket use a 'payload' parameter
 			$json = $_POST['payload'];
