@@ -52,7 +52,7 @@ class DTLog extends Object
 	 * @param string $type
 	 */
 	public function write($message, $type='INFO') {
-		if ($type == 'DEBUG' && $this->config('log_level') != 'DEBUG') return;
+		if ($type == 'DEBUG' && $this->config()->log_level != 'DEBUG') return;
 
 		$filename = $this->getLogPath();
 		if ($filename) {
@@ -71,9 +71,9 @@ class DTLog extends Object
 	 * @return string
 	 */
 	protected function getLogPath() {
-		$f = $this->config('log_file');
+		$f = $this->config()->log_file;
 		if (!$f) return '';
-		return BASE_PATH . DIRECTORY_SEPARATOR . $this->config('log_path') . DIRECTORY_SEPARATOR . $f;
+		return BASE_PATH . DIRECTORY_SEPARATOR . $this->config()->log_path . DIRECTORY_SEPARATOR . $f;
 	}
 
 }
