@@ -62,8 +62,11 @@ class DTLog extends Object
 			}
 
 			if (!is_string($message)) $message = print_r($message, true);
+			
+			$fmt = $this->config()->date_format;
+			if (empty($fmt) || !is_string($fmt)) $fmt = 'Y-m-d H:i:s';
 
-			file_put_contents($filename, date($this->config('date_format')) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
+			file_put_contents($filename, date($fmt) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
 		}
 	}
 
