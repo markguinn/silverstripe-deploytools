@@ -10,73 +10,85 @@
  */
 class DTLog extends Object
 {
-	static $log_path;     // relative to BASE_PATH
-	static $log_file;
-	static $log_level;
-	static $date_format;
+    public static $log_path;     // relative to BASE_PATH
+    public static $log_file;
+    public static $log_level;
+    public static $date_format;
 
-	private static $logger;
+    private static $logger;
 
-	/**
-	 * Singleton - I called it 'logger' in case we want to
-	 * plug in Zend_Log at any stage.
-	 *
-	 * @return DTLog
-	 */
-	public static function logger() {
-		if (!isset(self::$logger)) {
-			self::$logger = new DTLog();
-		}
-		return self::$logger;
-	}
+    /**
+     * Singleton - I called it 'logger' in case we want to
+     * plug in Zend_Log at any stage.
+     *
+     * @return DTLog
+     */
+    public static function logger()
+    {
+        if (!isset(self::$logger)) {
+            self::$logger = new DTLog();
+        }
+        return self::$logger;
+    }
 
-	/**
-	 * @param $msg
-	 */
-	public static function info($msg) {
-		self::logger()->write($msg, 'INFO');
-	}
+    /**
+     * @param $msg
+     */
+    public static function info($msg)
+    {
+        self::logger()->write($msg, 'INFO');
+    }
 
-	/**
-	 * @param $msg
-	 */
-	public static function debug($msg) {
-		self::logger()->write($msg, 'DEBUG');
-	}
+    /**
+     * @param $msg
+     */
+    public static function debug($msg)
+    {
+        self::logger()->write($msg, 'DEBUG');
+    }
 
-	/**
-	 * This is not the prettiest thing ever but it works
-	 * for the most basic case.
-	 *
-	 * @param mixed $message
-	 * @param string $type
-	 */
-	public function write($message, $type='INFO') {
-		if ($type == 'DEBUG' && $this->config()->log_level != 'DEBUG') return;
+    /**
+     * This is not the prettiest thing ever but it works
+     * for the most basic case.
+     *
+     * @param mixed $message
+     * @param string $type
+     */
+    public function write($message, $type='INFO')
+    {
+        if ($type == 'DEBUG' && $this->config()->log_level != 'DEBUG') {
+            return;
+        }
 
-		$filename = $this->getLogPath();
-		if ($filename) {
-			if (!file_exists($filename)) {
-				file_put_contents($filename, '');
-				chmod($filename, 0664);
-			}
+        $filename = $this->getLogPath();
+        if ($filename) {
+            if (!file_exists($filename)) {
+                file_put_contents($filename, '');
+                chmod($filename, 0664);
+            }
 
-			if (!is_string($message)) $message = print_r($message, true);
-			
-			$fmt = $this->config()->date_format;
-			if (empty($fmt) || !is_string($fmt)) $fmt = 'Y-m-d H:i:s';
+            if (!is_string($message)) {
+                $message = print_r($message, true);
+            }
+            
+            $fmt = $this->config()->date_format;
+            if (empty($fmt) || !is_string($fmt)) {
+                $fmt = 'Y-m-d H:i:s';
+            }
 
-			file_put_contents($filename, date($fmt) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
-		}
-	}
+            file_put_contents($filename, date($fmt) . ' --- ' . $type . ': ' . $message . PHP_EOL, FILE_APPEND);
+        }
+    }
 
-	/**
-	 * @return string
-	 */
-	protected function getLogPath() {
-		$f = $this->config()->log_file;
-		if (!$f) return '';
-		return BASE_PATH . DIRECTORY_SEPARATOR . $this->config()->log_path . DIRECTORY_SEPARATOR . $f;
-	}
-
+    /**
+     * @return string
+     */
+    protected function getLogPath()
+    {
+        $f = $this->config()->log_file;
+        if (!$f) {
+            return '';
+        }
+        return BASE_PATH . DIRECTORY_SEPARATOR . $this->config()->log_path . DIRECTORY_SEPARATOR . $f;
+    }
 }
